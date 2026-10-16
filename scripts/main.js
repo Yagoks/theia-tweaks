@@ -37,6 +37,14 @@ Hooks.once("init", () => {
     type: Boolean,
     default: true
   });
+  game.settings.register(MODULE_ID, "reactionOnce", {
+    name: "Offer each reaction once per attack",
+    hint: "Midi-QOL offered reactions without a reaction condition (Shield, Feather Fall…) at every step of an attack: before the roll, when attacked, when hit and before the damage. Offer them only when the attack hits, and never twice for the same attack.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true
+  });
   game.settings.register(MODULE_ID, "anchorSelfTemplates", {
     name: "Anchor Chris's Premades self templates to the caster",
     hint: "Chris's Premades places some cones and lines itself (Breath of the Dragon, for example), so Midi-QOL's \"Constrain Template Placement\" doesn't anchor them. While placing a cone or line with range Self, keep it on the edge of the caster's token, the same way Midi-QOL does; the mouse only turns it. Needs Midi-QOL.",
@@ -187,4 +195,39 @@ Hooks.on("updateActor", (actor, changes) => {
 });
 Hooks.on("createActiveEffect", effect => {
   if (effect.statuses.has("dead")) clearEffectsOnDeath(effect.parent);
+});
+
+/* Reactions without a condition are offered once, when the attack hits (Midi's own default, "isHit"). */
+const HIT_TRIGGERS = ["reaction", "reactionhit"];
+const offeredReactions = new Map();
+
+Hooks.on("midi-qol.ReactionFilter", (reactions, options, triggerType, list) => {
+  if (!game.settings.get(MODULE_ID, "reactionOnce")) return true;
+  const workflowId = options?.workflow?.id ?? options?.workflowId;
+  // Midi calls the filter twice when the attack hits: first to check (with the workflow), then to prompt (without it).
+  const prompting = !options?.workflow;
+  const uuidOf = r => r?.uuid ?? r?.activity?.uuid ?? r?.itemUuid ?? r?.item?.uuid;
+  const offered = offeredReactions.get(workflowId) ?? new Set();
+  const drop = r => {
+    const activity = (r instanceof foundry.abstract.DataModel) ? r : (r?.activity ?? null);
+    if (activity && !activity.reactionCondition && !HIT_TRIGGERS.includes(triggerType)) return true;
+    return offered.has(uuidOf(r));
+  };
+  const dropped = new Set();
+  for (let n = reactions.length - 1; n >= 0; n--) {
+    if (!drop(reactions[n])) continue;
+    dropped.add(uuidOf(reactions[n]));
+    reactions.splice(n, 1);
+  }
+  // Midi also keeps the activity uuids in a second list.
+  if (Array.isArray(list)) {
+    for (let n = list.length - 1; n >= 0; n--) if (dropped.has((typeof list[n] === "string") ? list[n] : uuidOf(list[n]))) list.splice(n, 1);
+  }
+  if (prompting) reactions.forEach(r => offered.add(uuidOf(r)));
+  if (workflowId) {
+    offeredReactions.set(workflowId, offered);
+    // Forget old attacks.
+    if (offeredReactions.size > 50) offeredReactions.delete(offeredReactions.keys().next().value);
+  }
+  return reactions.length > 0;
 });

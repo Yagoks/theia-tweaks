@@ -41,5 +41,11 @@ When an NPC drops to 0 hit points or gets the Dead condition, the temporary effe
 
 - **Clear others' effects from dead creatures:** on by default.
 
+## Offer each reaction once per attack
+
+Without a reaction condition, Midi-QOL offered reactions such as Shield and Feather Fall at every step of an attack: before the roll, when attacked, when hit and before the damage. They are now offered only when the attack hits, with the roll already on screen, and never twice for the same attack. Reactions with their own condition still follow it.
+
+- **Offer each reaction once per attack:** on by default.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
