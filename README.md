@@ -54,5 +54,9 @@ Some modules ask Sequencer for animations from packs this world doesn't have. Th
 - Gambit's Premades Counterspell: the beam `animated-spell-effects-cartoon.energy.beam.01` becomes `jb2a.energy_strands.complete.dark_purple02.01` on the creature whose spell is countered.
 - Its success message said "you cast undefined"; it now names the spell.
 
+## Somatic spell failure (Slow)
+
+An effect can set `flags.theia-tweaks.somaticFailure` to a percentage (Slow's "Slowed" effect sets 25). When that creature casts a spell with a Somatic component, a d100 is rolled: at or under the number the spell fails, the spell slot is spent anyway and the casting stops. Above it, the spell goes on normally. Needs Midi-QOL.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
