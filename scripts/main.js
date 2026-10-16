@@ -288,3 +288,20 @@ Hooks.on("midi-qol.targetingComplete", async workflow => {
   });
   return !failed;
 });
+
+/* Gambit's Premades' Identify window (DialogV2 "Identify Items Ritually"): the item rows wrapped, with narrow buttons. */
+Hooks.once("init", () => {
+  const style = document.createElement("style");
+  style.id = `${MODULE_ID}-gps-identify`;
+  const row = ".application.dialog li.item-list:has(> button.identify-btn)";
+  style.textContent = `
+    ${row} { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    ${row} > div { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    ${row} > div img { width: 36px; height: 36px; flex: none; border: 0; }
+    ${row} > div span { overflow: hidden; text-overflow: ellipsis; }
+    ${row} > button.identify-btn { width: auto !important; flex: none; white-space: nowrap; margin-left: auto !important; padding: 0 10px; }`;
+  document.head.appendChild(style);
+});
+Hooks.on("renderDialogV2", app => {
+  if (app.element?.querySelector("li.item-list > button.identify-btn")) app.setPosition({ width: Math.max(app.position.width ?? 0, 420), height: "auto" });
+});

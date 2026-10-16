@@ -53,6 +53,7 @@ Some modules ask Sequencer for animations from packs this world doesn't have. Th
 
 - Gambit's Premades Counterspell: the beam `animated-spell-effects-cartoon.energy.beam.01` becomes `jb2a.energy_strands.complete.dark_purple02.01` on the creature whose spell is countered.
 - Its success message said "you cast undefined"; it now names the spell.
+- Gambit's Premades' Identify window lays out each item on one row (image, name and button), a little wider.
 
 ## Somatic spell failure (Slow)
 
