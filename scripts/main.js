@@ -29,6 +29,14 @@ Hooks.once("init", () => {
     default: "eldritchBlast, scorchingRay",
     onChange: () => ui.chat?.render?.()
   });
+  game.settings.register(MODULE_ID, "anchorSelfTemplates", {
+    name: "Anchor Chris's Premades self templates to the caster",
+    hint: "Chris's Premades places some cones and lines itself (Breath of the Dragon, for example), so Midi-QOL's \"Constrain Template Placement\" doesn't anchor them. While placing a cone or line with range Self, keep it on the edge of the caster's token, the same way Midi-QOL does; the mouse only turns it. Needs Midi-QOL.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true
+  });
 });
 
 /**
@@ -88,4 +96,59 @@ Hooks.on("createActiveEffect", async effect => {
   if (!(actor instanceof Actor)) return;
   const invisible = actor.effects.filter(e => e.statuses.has("invisible")).map(e => e.id);
   if (invisible.length) await actor.deleteEmbeddedDocuments("ActiveEffect", invisible);
+});
+
+/**
+ * Chris's Premades places some self cones and lines with its own dnd5e template preview (Breath of the Dragon…), which
+ * Midi-QOL's "Constrain Template Placement" doesn't anchor. Give those previews Midi's anchor flags, so the template stays
+ * on the caster's token border and the mouse only turns it.
+ */
+function anchorData(document) {
+  if (!["cone", "ray"].includes(document.t)) return null;
+  if (document.flags?.["midi-qol"]?.anchorToToken) return null;
+  const origin = document.flags?.dnd5e?.origin ?? document.flags?.["midi-qol"]?.originUuid;
+  const item = origin ? fromUuidSync(origin, { strict: false }) : null;
+  if (!item?.flags?.["chris-premades"] || !item.actor) return null;
+  const self = (item.system.range?.units === "self") || item.system.activities?.some(a => a.range?.units === "self");
+  if (!self) return null;
+  const tokens = item.actor.getActiveTokens(true).filter(t => t.document.parent === canvas.scene);
+  const token = tokens.find(t => t.controlled) ?? tokens[0];
+  return token ? { anchorToToken: true, sourceTokenUuid: token.document.uuid } : null;
+}
+
+/** When the player cancels one of those previews (right click), the use stops before Midi rolls the damage. */
+const cancelledPreviews = new Map();
+const itemKey = item => (item ? `${item.actor?.uuid}.${item.id}` : null);
+
+Hooks.once("ready", () => {
+  const AbilityTemplate = game.dnd5e?.canvas?.AbilityTemplate;
+  if (!AbilityTemplate || !game.modules.get("midi-qol")?.active) return;
+  const drawPreview = AbilityTemplate.prototype.drawPreview;
+  AbilityTemplate.prototype.drawPreview = function(...args) {
+    if (!game.settings.get(MODULE_ID, "anchorSelfTemplates")) return drawPreview.apply(this, args);
+    const data = anchorData(this.document);
+    if (data) this.document.updateSource({ flags: { "midi-qol": data } });
+    const result = drawPreview.apply(this, args);
+    if (data) {
+      const key = itemKey(fromUuidSync(this.document.flags.dnd5e?.origin ?? this.document.flags["midi-qol"].originUuid, { strict: false }));
+      const cancel = () => cancelledPreviews.set(key, Date.now());
+      Promise.resolve(result).then(r => { if (!r || (Array.isArray(r) && !r.length)) cancel(); }, cancel);
+    }
+    return result;
+  };
+});
+
+Hooks.on("midi-qol.preDamageRoll", workflow => {
+  const key = itemKey(workflow?.item);
+  const at = cancelledPreviews.get(key);
+  if (!at) return true;
+  cancelledPreviews.delete(key);
+  if ((Date.now() - at > 60000) || workflow.templateUuid) return true;
+  ui.notifications.info(`${workflow.item.name}: cancelado.`);
+  const cardId = workflow.itemCardId;
+  setTimeout(async () => {
+    try { await workflow.performState?.(workflow.WorkflowState_Abort); } catch (err) { console.warn(`${MODULE_ID} |`, err); }
+    if (cardId) game.messages.get(cardId)?.delete();
+  }, 0);
+  return false;
 });

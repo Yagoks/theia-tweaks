@@ -27,5 +27,13 @@ An active effect flagged `flags.theia-tweaks.noInvisible` (Starry Wisp) keeps it
 - **When it lands:** the Invisible condition is removed.
 - **While it lasts:** Invisible can't be applied, and a notice says why.
 
+## Anchor Chris's Premades self templates
+
+Chris's Premades places some cones and lines with range Self itself (Breath of the Dragon, for example), so Midi-QOL's **Constrain Template Placement** doesn't anchor them. This tweak gives those previews Midi's anchor, so the template stays on the caster's token border and the mouse only turns it.
+
+If the player cancels the template (right click), the use stops before the damage is rolled: no dice and no card in the chat.
+
+- **Anchor Chris's Premades self templates to the caster:** on by default. Needs Midi-QOL.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
