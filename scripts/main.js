@@ -233,22 +233,28 @@ Hooks.on("midi-qol.ReactionFilter", (reactions, options, triggerType, list) => {
 });
 
 /**
- * Animations that modules ask for from packs this world doesn't have. Each missing name is registered in Sequencer's
- * database with a JB2A or Eskie file that does exist.
+ * Animations that modules ask for from packs this world doesn't have, swapped for one that exists. A beam stretched
+ * from one token to another becomes an effect on the token it pointed at.
  */
-const MISSING_ANIMATIONS = {
-  // Gambit's Premades Counterspell (it darkens the beam itself).
-  "animated-spell-effects-cartoon.energy.beam.01": "jb2a.energy_beam.normal.dark_purplered.02"
+const REPLACED_ANIMATIONS = {
+  // Gambit's Premades Counterspell: dark energy strands on the creature whose spell is countered.
+  "animated-spell-effects-cartoon.energy.beam.01": { file: "jb2a.energy_strands.complete.dark_purple02.01", scale: 1.5 }
 };
 
 Hooks.once("sequencerReady", () => {
-  for (const [name, fallback] of Object.entries(MISSING_ANIMATIONS)) {
-    if (Sequencer.Database.entryExists(name) || !Sequencer.Database.entryExists(fallback)) continue;
-    const entry = Sequencer.Database.getEntry(fallback);
-    const file = (Array.isArray(entry) ? entry[0] : entry)?.file;
-    if (!file) continue;
-    const [module, ...path] = name.split(".");
-    const data = foundry.utils.expandObject({ [path.join(".")]: foundry.utils.deepClone(file) });
-    Sequencer.Database.registerEntries(module, data);
-  }
+  const play = Sequence.prototype.play;
+  Sequence.prototype.play = function(...args) {
+    for (const section of this.sections ?? []) {
+      const swap = REPLACED_ANIMATIONS[section?._file];
+      if (!swap || Sequencer.Database.entryExists(section._file)) continue;
+      const target = section._stretchTo?.target ?? section._source;
+      section._file = swap.file;
+      section._stretchTo = null;
+      section._filters = [];
+      section._playbackRate = 1;
+      if (target) section.atLocation(target);
+      section.scaleToObject(swap.scale);
+    }
+    return play.apply(this, args);
+  };
 });

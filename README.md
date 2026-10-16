@@ -49,9 +49,9 @@ Without a reaction condition, Midi-QOL offered reactions such as Shield and Feat
 
 ## Missing animations
 
-Some modules ask Sequencer for animations from packs this world doesn't have. Theia Tweaks registers those names with a JB2A or Eskie animation that exists, so they play instead of failing:
+Some modules ask Sequencer for animations from packs this world doesn't have. Theia Tweaks swaps them for an animation that exists, so they play instead of failing:
 
-- Gambit's Premades Counterspell: `animated-spell-effects-cartoon.energy.beam.01` → `jb2a.energy_beam.normal.dark_purplered.02`.
+- Gambit's Premades Counterspell: the beam `animated-spell-effects-cartoon.energy.beam.01` becomes `jb2a.energy_strands.complete.dark_purple02.01` on the creature whose spell is countered.
 
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
