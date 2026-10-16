@@ -56,7 +56,7 @@ Some modules ask Sequencer for animations from packs this world doesn't have. Th
 
 ## Somatic spell failure (Slow)
 
-An effect can set `flags.theia-tweaks.somaticFailure` to a percentage (Slow's "Slowed" effect sets 25). When that creature casts a spell with a Somatic component, a d100 is rolled: at or under the number the spell fails, the spell slot is spent anyway and the casting stops. Above it, the spell goes on normally. Needs Midi-QOL.
+An effect can set `flags.theia-tweaks.somaticFailure` to a percentage (Slow's "Slowed" effect sets 25). When that creature casts a spell with a Somatic component, a d100 is rolled after the casting (the slot and the action are already spent) and before any attack or saving throw: at or under the number the spell fails. Above it, the spell goes on normally. Needs Midi-QOL.
 
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`

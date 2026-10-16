@@ -269,12 +269,12 @@ Hooks.once("ready", () => {
 
 /**
  * Somatic spell failure (Slow): a creature with an effect setting `flags.theia-tweaks.somaticFailure` to a percentage
- * rolls a d100 when it casts a spell with a Somatic component. At or under that number the gestures are too slow: the
- * spell fails, the spell slot is still spent and the casting stops.
+ * rolls a d100 after it casts a spell with a Somatic component (the slot and the action are already spent), before any
+ * attack or saving throw. At or under that number the gestures are too slow and the spell fails.
  */
-Hooks.on("midi-qol.preItemRoll", async ({ activity, config } = {}) => {
-  const item = activity?.item;
-  const actor = item?.actor;
+Hooks.on("midi-qol.targetingComplete", async workflow => {
+  const item = workflow?.item;
+  const actor = workflow?.actor ?? item?.actor;
   if ((item?.type !== "spell") || !item.system.properties?.has("somatic") || !actor) return true;
   const chance = Number(foundry.utils.getProperty(actor, `flags.${MODULE_ID}.somaticFailure`)) || 0;
   if (chance <= 0) return true;
@@ -286,22 +286,5 @@ Hooks.on("midi-qol.preItemRoll", async ({ activity, config } = {}) => {
       ? `<b>${item.name}</b> falha: os gestos estão lentos demais (d100 ≤ ${chance}).`
       : `<b>${item.name}</b>: os gestos saem a tempo (d100 > ${chance}).`
   });
-  if (!failed) return true;
-  // Midi asks before spending anything, so the lost slot is spent here.
-  if (activity.consumption?.spellSlot !== false) await spendFailedSpellSlot(actor, item, config?.spell?.slot);
-  return false;
+  return !failed;
 });
-
-/** The chosen slot, else one of the spell's level or higher (or a Pact Magic slot), is lost. Cantrips cost nothing. */
-async function spendFailedSpellSlot(actor, item, chosen) {
-  const level = item.system.level;
-  const method = item.system.method ?? item.system.preparation?.mode;
-  if (!level || ["atwill", "innate", "ritual"].includes(method)) return;
-  const spells = actor.system.spells ?? {};
-  const keys = chosen ? [chosen] : [];
-  if (method === "pact") keys.push("pact");
-  for (let l = level; l <= 9; l++) keys.push(`spell${l}`);
-  if (method !== "pact") keys.push("pact");
-  const key = keys.find(k => (spells[k]?.value > 0) && ((k !== "pact") || (spells.pact.level >= level)));
-  if (key) await actor.update({ [`system.spells.${key}.value`]: spells[key].value - 1 });
-}
