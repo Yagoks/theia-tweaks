@@ -258,3 +258,11 @@ Hooks.once("sequencerReady", () => {
     return play.apply(this, args);
   };
 });
+
+/* Gambit's Premades Counterspell's success message expects {itemProperName} but receives itemName ("…you cast undefined…"). */
+Hooks.once("ready", () => {
+  const messages = game.i18n.translations.GAMBITSPREMADES?.ChatMessages?.Automations?.Spells?.Counterspell;
+  if (typeof messages?.CounterspellAutoSuccess === "string") {
+    messages.CounterspellAutoSuccess = messages.CounterspellAutoSuccess.replace("{itemProperName}", "{itemName}");
+  }
+});
