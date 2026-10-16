@@ -231,3 +231,24 @@ Hooks.on("midi-qol.ReactionFilter", (reactions, options, triggerType, list) => {
   }
   return reactions.length > 0;
 });
+
+/**
+ * Animations that modules ask for from packs this world doesn't have. Each missing name is registered in Sequencer's
+ * database with a JB2A or Eskie file that does exist.
+ */
+const MISSING_ANIMATIONS = {
+  // Gambit's Premades Counterspell (it darkens the beam itself).
+  "animated-spell-effects-cartoon.energy.beam.01": "jb2a.energy_beam.normal.dark_purplered.02"
+};
+
+Hooks.once("sequencerReady", () => {
+  for (const [name, fallback] of Object.entries(MISSING_ANIMATIONS)) {
+    if (Sequencer.Database.entryExists(name) || !Sequencer.Database.entryExists(fallback)) continue;
+    const entry = Sequencer.Database.getEntry(fallback);
+    const file = (Array.isArray(entry) ? entry[0] : entry)?.file;
+    if (!file) continue;
+    const [module, ...path] = name.split(".");
+    const data = foundry.utils.expandObject({ [path.join(".")]: foundry.utils.deepClone(file) });
+    Sequencer.Database.registerEntries(module, data);
+  }
+});

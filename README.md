@@ -47,5 +47,11 @@ Without a reaction condition, Midi-QOL offered reactions such as Shield and Feat
 
 - **Offer each reaction once per attack:** on by default.
 
+## Missing animations
+
+Some modules ask Sequencer for animations from packs this world doesn't have. Theia Tweaks registers those names with a JB2A or Eskie animation that exists, so they play instead of failing:
+
+- Gambit's Premades Counterspell: `animated-spell-effects-cartoon.energy.beam.01` → `jb2a.energy_beam.normal.dark_purplered.02`.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
