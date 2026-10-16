@@ -35,5 +35,11 @@ If the player cancels the template (right click), the use stops before the damag
 
 - **Anchor Chris's Premades self templates to the caster:** on by default. Needs Midi-QOL.
 
+## Clear others' effects from dead creatures
+
+When an NPC drops to 0 hit points or gets the Dead condition, the temporary effects other creatures put on it are removed, along with their animations (for example Ray of Frost's Reduced Movement). Its own effects and conditions such as Dead, Unconscious and Prone stay. Player characters at 0 hit points keep everything, since they aren't dead.
+
+- **Clear others' effects from dead creatures:** on by default.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`

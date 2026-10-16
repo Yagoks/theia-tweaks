@@ -29,6 +29,14 @@ Hooks.once("init", () => {
     default: "eldritchBlast, scorchingRay",
     onChange: () => ui.chat?.render?.()
   });
+  game.settings.register(MODULE_ID, "clearEffectsOnDeath", {
+    name: "Clear others' effects from dead creatures",
+    hint: "When an NPC drops to 0 hit points or gets the Dead condition, remove the temporary effects other creatures put on it (Ray of Frost's Reduced Movement, for example), along with their animations. Conditions such as Dead, Unconscious and Prone stay.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true
+  });
   game.settings.register(MODULE_ID, "anchorSelfTemplates", {
     name: "Anchor Chris's Premades self templates to the caster",
     hint: "Chris's Premades places some cones and lines itself (Breath of the Dragon, for example), so Midi-QOL's \"Constrain Template Placement\" doesn't anchor them. While placing a cone or line with range Self, keep it on the edge of the caster's token, the same way Midi-QOL does; the mouse only turns it. Needs Midi-QOL.",
@@ -151,4 +159,32 @@ Hooks.on("midi-qol.preDamageRoll", workflow => {
     if (cardId) game.messages.get(cardId)?.delete();
   }, 0);
   return false;
+});
+
+/* Dead creatures lose the temporary effects others put on them (and the animations that come with those). */
+const KEEP_ON_DEATH = ["dead", "unconscious", "prone", "incapacitated", "bleeding"];
+
+function isDead(actor) {
+  if (actor.statuses?.has("dead")) return true;
+  const hp = actor.system?.attributes?.hp;
+  return (actor.type === "npc") && !!hp?.max && (hp.value <= 0);
+}
+
+async function clearEffectsOnDeath(actor) {
+  if (!game.users.activeGM?.isSelf || !game.settings.get(MODULE_ID, "clearEffectsOnDeath")) return;
+  if (!(actor instanceof Actor) || !isDead(actor)) return;
+  const ids = actor.effects.filter(effect => {
+    if (!effect.isTemporary || KEEP_ON_DEATH.some(s => effect.statuses.has(s))) return false;
+    const origin = effect.origin ? fromUuidSync(effect.origin, { strict: false }) : null;
+    const source = (origin instanceof Actor) ? origin : (origin?.actor ?? origin?.parent?.actor ?? origin?.parent);
+    return (source instanceof Actor) && (source.uuid !== actor.uuid);
+  }).map(effect => effect.id);
+  if (ids.length) await actor.deleteEmbeddedDocuments("ActiveEffect", ids);
+}
+
+Hooks.on("updateActor", (actor, changes) => {
+  if (foundry.utils.hasProperty(changes, "system.attributes.hp")) clearEffectsOnDeath(actor);
+});
+Hooks.on("createActiveEffect", effect => {
+  if (effect.statuses.has("dead")) clearEffectsOnDeath(effect.parent);
 });
