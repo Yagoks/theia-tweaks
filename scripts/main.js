@@ -45,6 +45,14 @@ Hooks.once("init", () => {
     type: Boolean,
     default: true
   });
+  game.settings.register(MODULE_ID, "dedupeConcentration", {
+    name: "Remove duplicate concentration",
+    hint: "Midi-QOL and the system sometimes create two \"Concentrating\" effects for one casting. Keep the first, move the effects tied to the second onto it, and remove the second.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true
+  });
   game.settings.register(MODULE_ID, "anchorSelfTemplates", {
     name: "Anchor Chris's Premades self templates to the caster",
     hint: "Chris's Premades places some cones and lines itself (Breath of the Dragon, for example), so Midi-QOL's \"Constrain Template Placement\" doesn't anchor them. While placing a cone or line with range Self, keep it on the edge of the caster's token, the same way Midi-QOL does; the mouse only turns it. Needs Midi-QOL.",
@@ -304,4 +312,26 @@ Hooks.once("init", () => {
 });
 Hooks.on("renderDialogV2", app => {
   if (app.element?.querySelector("li.item-list > button.identify-btn")) app.setPosition({ width: Math.max(app.position.width ?? 0, 420), height: "auto" });
+});
+
+/* One casting, one concentration: a second "Concentrating" effect from the same spell is merged into the first. */
+Hooks.on("createActiveEffect", effect => {
+  if (!effect.statuses?.has("concentrating") || !(effect.parent instanceof Actor)) return;
+  if (!game.users.activeGM?.isSelf || !game.settings.get(MODULE_ID, "dedupeConcentration")) return;
+  // Wait a moment: the dependents of both effects are linked right after they are created.
+  setTimeout(async () => {
+    const actor = effect.parent;
+    const itemOf = e => e.flags?.dnd5e?.item?.id ?? e.origin;
+    const same = actor.effects.filter(e => e.statuses.has("concentrating") && (itemOf(e) === itemOf(effect)))
+      .sort((a, b) => (a._stats.createdTime ?? 0) - (b._stats.createdTime ?? 0));
+    if (same.length < 2) return;
+    const [keep, ...extra] = same;
+    for (const dup of extra) {
+      if (Math.abs((dup._stats.createdTime ?? 0) - (keep._stats.createdTime ?? 0)) > 10000) continue;
+      const dependents = dup.getDependents?.() ?? [];
+      if (dependents.length) await keep.addDependent(...dependents);
+      await dup.update({ "flags.dnd5e.-=dependents": null });
+      await dup.delete();
+    }
+  }, 1500);
 });

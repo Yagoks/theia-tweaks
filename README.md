@@ -59,5 +59,11 @@ Some modules ask Sequencer for animations from packs this world doesn't have. Th
 
 An effect can set `flags.theia-tweaks.somaticFailure` to a percentage (Slow's "Slowed" effect sets 25). When that creature casts a spell with a Somatic component, a d100 is rolled after the casting (the slot and the action are already spent) and before any attack or saving throw: at or under the number the spell fails. Above it, the spell goes on normally. Needs Midi-QOL.
 
+## Remove duplicate concentration
+
+Midi-QOL and the system sometimes create two "Concentrating" effects for a single casting. The active GM keeps the first one, moves the effects tied to the second (on the targets) onto it, and removes the second.
+
+- **Remove duplicate concentration:** on by default.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
