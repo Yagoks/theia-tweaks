@@ -335,3 +335,27 @@ Hooks.on("createActiveEffect", effect => {
     }
   }, 1500);
 });
+
+/**
+ * HP alerts for the GM: an actor with `flags.theia-tweaks.hpAlert` (a number, or {value, message}) warns the GM when its
+ * hit points drop to that value or below (once per crossing). E.g. Perpetual Mechanical Array at 105: Defensive Array.
+ */
+Hooks.on("updateActor", (actor, changes, options) => {
+  if (!game.users.activeGM?.isSelf || !foundry.utils.hasProperty(changes, "system.attributes.hp")) return;
+  const raw = actor.getFlag?.(MODULE_ID, "hpAlert") ?? foundry.utils.getProperty(actor, `flags.${MODULE_ID}.hpAlert`);
+  if (raw === undefined || raw === null || raw === "") return;
+  const threshold = Number(typeof raw === "object" ? raw.value : raw);
+  if (!Number.isFinite(threshold)) return;
+  const now = actor.system.attributes.hp.value;
+  const before = options?.dnd5e?.hp?.value;
+  if (before === undefined || !(before > threshold && now <= threshold)) return;
+  const name = actor.token?.name ?? actor.name;
+  const message = (typeof raw === "object" && raw.message) ? raw.message : `${name} is at ${threshold} HP or less.`;
+  ui.notifications.warn(`${name}: ${now} HP — ${message}`, { permanent: true });
+  ChatMessage.create({
+    whisper: ChatMessage.getWhisperRecipients("GM"),
+    speaker: { alias: "HP Alert" },
+    content: `<p><b>${name}</b> dropped to <b>${now} HP</b> (alert at ${threshold}).</p><p>${message}</p>`
+  });
+  foundry.audio.AudioHelper.play({ src: "sounds/notify.wav", volume: 0.8 }, false);
+});

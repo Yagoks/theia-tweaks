@@ -65,5 +65,11 @@ Midi-QOL and the system sometimes create two "Concentrating" effects for a singl
 
 - **Remove duplicate concentration:** on by default.
 
+## HP alerts
+
+Give an actor the flag `flags.theia-tweaks.hpAlert` (a number, or `{ value, message }`) and the GM is warned — a notification, a GM-only chat message and a sound — when its hit points drop to that value or below. It fires once each time the HP crosses the line.
+
+Used on the Perpetual Mechanical Array at 105 HP (Defensive Array).
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
