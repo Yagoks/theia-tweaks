@@ -77,5 +77,9 @@ Used on the Perpetual Mechanical Array at 105 HP (Defensive Array).
 
 An effect with the change `flags.theia-tweaks.onDamageMacro` (the name of a world macro) runs that macro right before the damage against the creature is applied, on the client running the attack. The macro gets `{ theiaPass: "onDamage", token, actor, ditem, workflow, effect }` as `args[0]` and may change `ditem`. Used by `Theia_Deflect_Attacks` (the monk's Deflect Attacks, which also counts temporary hit points correctly).
 
+## Initiative macros
+
+An item with the flag `flags.theia-tweaks.onInitiativeMacro` (the name of a world macro) runs that macro when its owner rolls initiative. The macro gets `{ theiaPass: "onInitiative", actor, item, combatants }` as `args[0]`. Used by `Theia_Uncanny_Metabolism` (the monk is asked whether to use Uncanny Metabolism: heal and regain all Focus Points).
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`

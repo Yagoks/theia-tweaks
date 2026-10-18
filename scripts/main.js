@@ -396,3 +396,21 @@ Hooks.on("midi-qol.preTargetDamageApplication", async (token, { workflow, ditem 
     }
   }
 });
+
+/*
+ * Initiative macros: an item with the flag "flags.theia-tweaks.onInitiativeMacro" (a world macro name) runs that macro
+ * when its owner rolls initiative, on the client that rolled. The macro receives
+ * { theiaPass: "onInitiative", actor, item, combatants } as args[0].
+ */
+Hooks.on("dnd5e.rollInitiative", async (actor, combatants) => {
+  for (const item of actor?.items ?? []) {
+    const name = item.getFlag(MODULE_ID, "onInitiativeMacro");
+    const macro = name ? game.macros.getName(name) : null;
+    if (!macro) continue;
+    try {
+      await macro.execute({ args: [{ theiaPass: "onInitiative", actor, item, combatants }] });
+    } catch (error) {
+      console.error(`${MODULE_ID} | ${macro.name}`, error);
+    }
+  }
+});
