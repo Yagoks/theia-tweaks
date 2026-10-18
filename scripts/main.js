@@ -376,3 +376,34 @@ Hooks.on("updateActor", (actor, changes, options) => {
   });
   foundry.audio.AudioHelper.play({ src: "sounds/notify.wav", volume: 0.8 }, false);
 });
+
+/*
+ * Chris's Premades Deflect Attacks only asks when the hit lowers HP ("newHP !== oldHP"), so it never asked while
+ * temporary hit points soaked the damage, and it judged "reduced to 0" the same way. CPR now sees the damage as if
+ * there were no temporary hit points; afterwards the real temporary hit points take what is left.
+ */
+Hooks.once("ready", () => {
+  const entry = globalThis.chrisPremades?.macros?.deflectAttacks?.midi?.actor?.find(m => m.pass === "targetApplyDamage");
+  if (!entry || entry.theiaTempHP) return;
+  const original = entry.macro;
+  entry.theiaTempHP = true;
+  entry.macro = async function(args) {
+    const ditem = args?.ditem;
+    const tempHP = Number(ditem?.oldTempHP) || 0;
+    if (!ditem || tempHP <= 0) return original.call(this, args);
+    const shown = { oldTempHP: 0, newTempHP: 0, newHP: Math.clamp(ditem.oldHP - Math.max(ditem.totalDamage, 0), 0, ditem.oldHP) };
+    shown.hpDamage = ditem.oldHP - shown.newHP;
+    const view = new Proxy(ditem, {
+      get: (target, key) => (key in shown) ? shown[key] : target[key],
+      set: (target, key, value) => { if (key in shown) shown[key] = value; else target[key] = value; return true; }
+    });
+    try {
+      return await original.call(this, { ...args, ditem: view });
+    } finally {
+      const left = tempHP - ditem.totalDamage;
+      ditem.newTempHP = Math.max(left, 0);
+      ditem.newHP = Math.clamp(ditem.oldHP + Math.min(0, left), 0, ditem.oldHP);
+      ditem.hpDamage = ditem.oldHP - ditem.newHP;
+    }
+  };
+});
