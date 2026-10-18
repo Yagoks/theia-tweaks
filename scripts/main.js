@@ -205,6 +205,23 @@ Hooks.on("createActiveEffect", effect => {
   if (effect.statuses.has("dead")) clearEffectsOnDeath(effect.parent);
 });
 
+/*
+ * Gambit's Premades reactions (Counterspell, Silvery Barbs…) carry the reaction condition "false" because GPS asks for
+ * them itself, but Midi still offered them before every attack.
+ */
+Hooks.on("midi-qol.ReactionFilter", (reactions, options, triggerType, list) => {
+  const activityOf = r => {
+    if (r instanceof foundry.abstract.DataModel) return r;
+    if (r?.activity) return r.activity;
+    const uuid = (typeof r === "string") ? r : (r?.uuid ?? r?.itemUuid);
+    return uuid ? fromUuidSync(uuid, { strict: false }) : null;
+  };
+  const gpsOnly = r => String(activityOf(r)?.reactionCondition ?? "").trim() === "false";
+  for (let n = reactions.length - 1; n >= 0; n--) if (gpsOnly(reactions[n])) reactions.splice(n, 1);
+  if (Array.isArray(list)) for (let n = list.length - 1; n >= 0; n--) if (gpsOnly(list[n])) list.splice(n, 1);
+  return reactions.length > 0;
+});
+
 /* Reactions without a condition are offered once, when the attack hits (Midi's own default, "isHit"). */
 const HIT_TRIGGERS = ["reaction", "reactionhit"];
 const offeredReactions = new Map();

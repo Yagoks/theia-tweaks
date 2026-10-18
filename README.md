@@ -45,6 +45,8 @@ When an NPC drops to 0 hit points or gets the Dead condition, the temporary effe
 
 Without a reaction condition, Midi-QOL offered reactions such as Shield and Feather Fall at every step of an attack: before the roll, when attacked, when hit and before the damage. They are now offered only when the attack hits, with the roll already on screen, and never twice for the same attack. Reactions with their own condition still follow it.
 
+Reactions that Gambit's Premades asks for itself, such as Counterspell (reaction condition `false`), are never offered by Midi-QOL. Counterspell is offered only when a spell is cast.
+
 - **Offer each reaction once per attack:** on by default.
 
 ## Missing animations
