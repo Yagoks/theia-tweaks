@@ -378,6 +378,17 @@ Hooks.on("updateActor", (actor, changes, options) => {
 });
 
 /*
+ * Runs a world macro for the damage and initiative hooks. Players may not run script macros, so a macro written by a
+ * GM runs directly when the current user cannot execute it (as Midi-QOL does with item macros).
+ */
+async function runWorldMacro(macro, args) {
+  if (macro.canExecute) return macro.execute({ args });
+  if (!macro.author?.isGM || macro.type !== "script") return;
+  const AsyncFunction = (async function() {}).constructor;
+  return new AsyncFunction("args", "scope", macro.command).call(macro, args, { args });
+}
+
+/*
  * Damage macros: an effect with the change "flags.theia-tweaks.onDamageMacro" (a world macro name) runs that macro
  * on the client running the attack, after the damage against the creature is worked out and before it is applied.
  * The macro receives { theiaPass: "onDamage", token, actor, ditem, workflow, effect } as args[0] and may change ditem.
@@ -390,7 +401,7 @@ Hooks.on("midi-qol.preTargetDamageApplication", async (token, { workflow, ditem 
     const macro = change?.value ? game.macros.getName(change.value) : null;
     if (!macro) continue;
     try {
-      await macro.execute({ args: [{ theiaPass: "onDamage", token, actor, ditem, workflow, effect }] });
+      await runWorldMacro(macro, [{ theiaPass: "onDamage", token, actor, ditem, workflow, effect }]);
     } catch (error) {
       console.error(`${MODULE_ID} | ${macro.name}`, error);
     }
@@ -399,18 +410,19 @@ Hooks.on("midi-qol.preTargetDamageApplication", async (token, { workflow, ditem 
 
 /*
  * Initiative macros: an item with the flag "flags.theia-tweaks.onInitiativeMacro" (a world macro name) runs that macro
- * when its owner's initiative is rolled, from the sheet or the combat tracker, on the client that rolled. The macro
+ * when its owner's initiative is rolled (sheet, combat tracker, Epic Rolls), on the active GM's client. The macro
  * receives { theiaPass: "onInitiative", actor, item, combatants } as args[0].
  */
-Hooks.on("updateCombatant", async (combatant, changes, options, userId) => {
-  if (userId !== game.user.id || !("initiative" in changes) || changes.initiative === null) return;
+Hooks.on("updateCombatant", async (combatant, changes) => {
+  // Runs once, for the active GM, whoever rolled (the macro asks the player through a dialog).
+  if (!game.users.activeGM?.isSelf || !("initiative" in changes) || changes.initiative === null) return;
   const actor = combatant.actor;
   for (const item of actor?.items ?? []) {
     const name = item.getFlag(MODULE_ID, "onInitiativeMacro");
     const macro = name ? game.macros.getName(name) : null;
     if (!macro) continue;
     try {
-      await macro.execute({ args: [{ theiaPass: "onInitiative", actor, item, combatants: [combatant] }] });
+      await runWorldMacro(macro, [{ theiaPass: "onInitiative", actor, item, combatants: [combatant] }]);
     } catch (error) {
       console.error(`${MODULE_ID} | ${macro.name}`, error);
     }

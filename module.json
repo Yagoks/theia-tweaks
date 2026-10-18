@@ -2,11 +2,11 @@
   "id": "theia-tweaks",
   "title": "Theia Tweaks",
   "description": "Small tweaks for the Theia worlds: hides the extra \"use\" card of Chris's Premades multi-beam spells, stops Dice So Nice from animating Midi's dice twice, and lets an effect (Starry Wisp) keep a creature from being invisible.",
-  "version": "0.10.5",
+  "version": "0.10.6",
   "authors": [{ "name": "Yagoks" }],
   "compatibility": { "minimum": "13", "verified": "13" },
   "esmodules": ["scripts/main.js"],
   "url": "https://github.com/Yagoks/theia-tweaks",
   "manifest": "https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json",
-  "download": "https://github.com/Yagoks/theia-tweaks/releases/download/v0.10.5/module.zip"
+  "download": "https://github.com/Yagoks/theia-tweaks/releases/download/v0.10.6/module.zip"
 }
