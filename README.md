@@ -79,7 +79,7 @@ An effect with the change `flags.theia-tweaks.onDamageMacro` (the name of a worl
 
 ## Initiative macros
 
-An item with the flag `flags.theia-tweaks.onInitiativeMacro` (the name of a world macro) runs that macro when its owner rolls initiative. The macro gets `{ theiaPass: "onInitiative", actor, item, combatants }` as `args[0]`. Used by `Theia_Uncanny_Metabolism` (the monk is asked whether to use Uncanny Metabolism: heal and regain all Focus Points).
+An item with the flag `flags.theia-tweaks.onInitiativeMacro` (the name of a world macro) runs that macro when its owner's initiative is rolled, from the sheet or the combat tracker. The macro gets `{ theiaPass: "onInitiative", actor, item, combatants }` as `args[0]`. Used by `Theia_Uncanny_Metabolism` (the monk is asked whether to use Uncanny Metabolism: heal and regain all Focus Points).
 
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
