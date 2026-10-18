@@ -378,32 +378,21 @@ Hooks.on("updateActor", (actor, changes, options) => {
 });
 
 /*
- * Chris's Premades Deflect Attacks only asks when the hit lowers HP ("newHP !== oldHP"), so it never asked while
- * temporary hit points soaked the damage, and it judged "reduced to 0" the same way. CPR now sees the damage as if
- * there were no temporary hit points; afterwards the real temporary hit points take what is left.
+ * Damage macros: an effect with the change "flags.theia-tweaks.onDamageMacro" (a world macro name) runs that macro
+ * on the client running the attack, after the damage against the creature is worked out and before it is applied.
+ * The macro receives { theiaPass: "onDamage", token, actor, ditem, workflow, effect } as args[0] and may change ditem.
  */
-Hooks.once("ready", () => {
-  const entry = globalThis.chrisPremades?.macros?.deflectAttacks?.midi?.actor?.find(m => m.pass === "targetApplyDamage");
-  if (!entry || entry.theiaTempHP) return;
-  const original = entry.macro;
-  entry.theiaTempHP = true;
-  entry.macro = async function(args) {
-    const ditem = args?.ditem;
-    const tempHP = Number(ditem?.oldTempHP) || 0;
-    if (!ditem || tempHP <= 0) return original.call(this, args);
-    const shown = { oldTempHP: 0, newTempHP: 0, newHP: Math.clamp(ditem.oldHP - Math.max(ditem.totalDamage, 0), 0, ditem.oldHP) };
-    shown.hpDamage = ditem.oldHP - shown.newHP;
-    const view = new Proxy(ditem, {
-      get: (target, key) => (key in shown) ? shown[key] : target[key],
-      set: (target, key, value) => { if (key in shown) shown[key] = value; else target[key] = value; return true; }
-    });
+Hooks.on("midi-qol.preTargetDamageApplication", async (token, { workflow, ditem } = {}) => {
+  const actor = token?.actor;
+  if (!actor || !ditem) return;
+  for (const effect of actor.appliedEffects) {
+    const change = effect.changes.find(c => c.key === `flags.${MODULE_ID}.onDamageMacro`);
+    const macro = change?.value ? game.macros.getName(change.value) : null;
+    if (!macro) continue;
     try {
-      return await original.call(this, { ...args, ditem: view });
-    } finally {
-      const left = tempHP - ditem.totalDamage;
-      ditem.newTempHP = Math.max(left, 0);
-      ditem.newHP = Math.clamp(ditem.oldHP + Math.min(0, left), 0, ditem.oldHP);
-      ditem.hpDamage = ditem.oldHP - ditem.newHP;
+      await macro.execute({ args: [{ theiaPass: "onDamage", token, actor, ditem, workflow, effect }] });
+    } catch (error) {
+      console.error(`${MODULE_ID} | ${macro.name}`, error);
     }
-  };
+  }
 });

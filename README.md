@@ -73,9 +73,9 @@ Give an actor the flag `flags.theia-tweaks.hpAlert` (a number, or `{ value, mess
 
 Used on the Perpetual Mechanical Array at 105 HP (Defensive Array).
 
-## Deflect Attacks with temporary hit points
+## Damage macros
 
-Chris's Premades' Deflect Attacks didn't ask when temporary hit points took the whole hit, because it only checked whether HP changed. It now asks, reduces the damage as usual, and the temporary hit points take what is left.
+An effect with the change `flags.theia-tweaks.onDamageMacro` (the name of a world macro) runs that macro right before the damage against the creature is applied, on the client running the attack. The macro gets `{ theiaPass: "onDamage", token, actor, ditem, workflow, effect }` as `args[0]` and may change `ditem`. Used by `Theia_Deflect_Attacks` (the monk's Deflect Attacks, which also counts temporary hit points correctly).
 
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
