@@ -428,3 +428,36 @@ Hooks.on("updateCombatant", async (combatant, changes) => {
     }
   }
 });
+
+/*
+ * Scheduled lights: an ambient light with the flag "flags.theia-tweaks.schedule" = { on: 19, off: 23 } (hours of the
+ * world clock, as SmallTime shows it) is lit only between those hours and hidden the rest of the day. The active GM
+ * updates the lights of the viewed and the active scene whenever the world time changes.
+ */
+function scheduledLightsHour() {
+  const c = game.time.components ?? {};
+  return (Number(c.hour) || 0) + (Number(c.minute) || 0) / 60;
+}
+
+function isInSchedule(hour, { on = 19, off = 23 } = {}) {
+  return on <= off ? hour >= on && hour < off : hour >= on || hour < off;
+}
+
+async function updateScheduledLights() {
+  if (!game.users.activeGM?.isSelf) return;
+  const hour = scheduledLightsHour();
+  const scenes = new Set([canvas?.scene, game.scenes.active].filter(Boolean));
+  for (const scene of scenes) {
+    const updates = [];
+    for (const light of scene.lights) {
+      const schedule = light.getFlag(MODULE_ID, "schedule");
+      if (!schedule) continue;
+      const hidden = !isInSchedule(hour, schedule);
+      if (light.hidden !== hidden) updates.push({ _id: light.id, hidden });
+    }
+    if (updates.length) await scene.updateEmbeddedDocuments("AmbientLight", updates);
+  }
+}
+
+Hooks.on("updateWorldTime", () => updateScheduledLights());
+Hooks.on("canvasReady", () => updateScheduledLights());

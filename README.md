@@ -83,5 +83,9 @@ An item with the flag `flags.theia-tweaks.onInitiativeMacro` (the name of a worl
 
 Damage and initiative macros written by a GM also run for players who may not execute script macros.
 
+## Scheduled lights
+
+An ambient light with the flag `flags.theia-tweaks.schedule` = `{ on: 19, off: 23 }` is lit only between those hours of the world clock (as SmallTime shows it) and hidden the rest of the day. The active GM updates the lights of the viewed and the active scene whenever the time changes.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
