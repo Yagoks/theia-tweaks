@@ -461,3 +461,38 @@ async function updateScheduledLights() {
 
 Hooks.on("updateWorldTime", () => updateScheduledLights());
 Hooks.on("canvasReady", () => updateScheduledLights());
+
+/*
+ * Gift scenes (Stylish Relationship Tracker): an NPC can hold flags.theia-tweaks.giftScenes =
+ * { "<item name, lower case>": { title, recollection, quote, image } }. When one of those items is given as a Gift,
+ * the tracker logs a gift event; the active GM then fills that event with the scene, so the Event Log shows it as a
+ * scene recall. With no image, the scene uses the relationship portrait.
+ */
+const SRT_ID = "stylish-relationship-tracker";
+const giftSceneKey = name => String(name ?? "").trim().toLowerCase();
+let srtOperations = null;
+
+async function fillGiftScenes(actor) {
+  const data = actor.getFlag(SRT_ID, "relationshipData");
+  for (const rel of data?.relationships ?? []) {
+    for (const ev of rel.events ?? []) {
+      if (ev.eventType !== "gift" || ev.recollection || !ev.gift?.itemName || !ev.gift.targetActorUuid) continue;
+      const target = await fromUuid(ev.gift.targetActorUuid);
+      const scene = target?.getFlag(MODULE_ID, "giftScenes")?.[giftSceneKey(ev.gift.itemName)];
+      if (!scene) continue;
+      srtOperations ??= await import(`/modules/${SRT_ID}/scripts/core/relationship-operations.js`);
+      await srtOperations.updateEvent(actor, rel.id, ev.id, {
+        text: scene.title,
+        recollection: scene.recollection,
+        quote: scene.quote,
+        image: scene.image || rel.portrait
+      });
+    }
+  }
+}
+
+Hooks.on("updateActor", (actor, changes) => {
+  if (!game.users.activeGM?.isSelf || !game.modules.get(SRT_ID)?.active) return;
+  if (!foundry.utils.hasProperty(changes, `flags.${SRT_ID}.relationshipData`)) return;
+  fillGiftScenes(actor).catch(error => console.error(`${MODULE_ID} | gift scenes`, error));
+});
