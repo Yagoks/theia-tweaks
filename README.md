@@ -87,5 +87,9 @@ Damage and initiative macros written by a GM also run for players who may not ex
 
 An ambient light with the flag `flags.theia-tweaks.schedule` = `{ on: 19, off: 23 }` is lit only between those hours of the world clock (as SmallTime shows it) and hidden the rest of the day. The active GM updates the lights of the viewed and the active scene whenever the time changes.
 
+## Gift scenes (Stylish Relationship Tracker)
+
+An NPC can hold the flag `flags.theia-tweaks.giftScenes` = `{ "<item name, lower case>": { title, recollection, quote, image } }`. When one of those items is given as a Gift, the active GM fills the gift event the tracker logs with that scene, so the Event Log shows it as a scene recall. With no image, it uses the relationship portrait.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
