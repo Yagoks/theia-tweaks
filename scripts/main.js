@@ -496,3 +496,40 @@ Hooks.on("updateActor", (actor, changes) => {
   if (!foundry.utils.hasProperty(changes, `flags.${SRT_ID}.relationshipData`)) return;
   fillGiftScenes(actor).catch(error => console.error(`${MODULE_ID} | gift scenes`, error));
 });
+
+/*
+ * Hit points on level up (Theia rule): take the average, or roll; one reroll is allowed and the second result stays.
+ * The level-up window counts the rolls of each class level in this session: after the first roll the average can no
+ * longer be taken, and after the second roll the roll button is locked. Players can't type a value by hand.
+ */
+const hpRolls = new Map(); // "actor.item.level" -> rolls made
+const hpRollKey = flow => `${flow.advancement?.actor?.id}.${flow.advancement?.item?.id}.${flow.level}`;
+
+Hooks.once("setup", () => {
+  const actions = dnd5e?.applications?.advancement?.HitPointsFlow?.DEFAULT_OPTIONS?.actions;
+  const rollHitPoints = actions?.rollHitPoints;
+  if (typeof rollHitPoints !== "function") return;
+  actions.rollHitPoints = async function(event, target) {
+    const key = hpRollKey(this);
+    const rolls = hpRolls.get(key) ?? 0;
+    if (rolls >= 2) return;
+    hpRolls.set(key, rolls + 1);
+    return rollHitPoints.call(this, event, target);
+  };
+});
+
+Hooks.on("renderHitPointsFlow", (app, element) => {
+  const root = element instanceof HTMLElement ? element : element?.[0];
+  if (!root) return;
+  const rolls = hpRolls.get(hpRollKey(app)) ?? 0;
+  if (!game.user.isGM) root.querySelectorAll('input[name="value"]').forEach(i => { i.readOnly = true; });
+  if (rolls >= 1) root.querySelectorAll('[name="useAverage"]').forEach(i => { i.disabled = true; });
+  const button = root.querySelector('[data-action="rollHitPoints"]');
+  if (!button) return;
+  if (rolls >= 2) {
+    button.disabled = true;
+    button.dataset.tooltip = "Reroll already used: the second result stays.";
+  } else if (rolls === 1) {
+    button.dataset.tooltip = "One reroll left. If you reroll, you must keep the new result.";
+  }
+});

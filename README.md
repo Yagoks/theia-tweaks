@@ -91,5 +91,9 @@ An ambient light with the flag `flags.theia-tweaks.schedule` = `{ on: 19, off: 2
 
 An NPC can hold the flag `flags.theia-tweaks.giftScenes` = `{ "<item name, lower case>": { title, recollection, quote, image } }`. When one of those items is given as a Gift, the active GM fills the gift event the tracker logs with that scene, so the Event Log shows it as a scene recall. With no image, it uses the relationship portrait.
 
+## Hit points on level up
+
+Theia's rule: take the average, or roll; one reroll is allowed and the second result stays. In the level-up window, after the first roll the average can no longer be taken, and after the second roll the roll button is locked. Players can't type a hit point value by hand; the GM still can.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
