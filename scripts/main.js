@@ -430,6 +430,30 @@ Hooks.on("updateCombatant", async (combatant, changes) => {
 });
 
 /*
+ * Initiative reroll (Hypervigilance): an effect that sets "flags.theia-tweaks.initiativeReroll" to a number makes the
+ * initiative d20 reroll once when it shows that number or lower; the new roll stays.
+ */
+Hooks.on("dnd5e.preConfigureInitiative", (actor, config) => {
+  const below = Number(actor.flags?.[MODULE_ID]?.initiativeReroll);
+  if (below > 0) config.options.theiaInitiativeReroll = below;
+});
+
+Hooks.once("setup", () => {
+  const D20Roll = CONFIG.Dice.D20Roll;
+  const configureModifiers = D20Roll?.prototype.configureModifiers;
+  if (typeof configureModifiers !== "function") return;
+  D20Roll.prototype.configureModifiers = function() {
+    configureModifiers.call(this);
+    const below = this.options.theiaInitiativeReroll;
+    if (!below || !this.validD20Roll) return;
+    const modifier = `r<=${below}`;
+    if (this.d20.modifiers.includes(modifier)) return;
+    this.d20.modifiers.push(modifier);
+    this.resetFormula();
+  };
+});
+
+/*
  * Scheduled lights: an ambient light with the flag "flags.theia-tweaks.schedule" = { on: 19, off: 23 } (hours of the
  * world clock, as SmallTime shows it) is lit only between those hours and hidden the rest of the day. The active GM
  * updates the lights of the viewed and the active scene whenever the world time changes.

@@ -83,6 +83,10 @@ An item with the flag `flags.theia-tweaks.onInitiativeMacro` (the name of a worl
 
 Damage and initiative macros written by a GM also run for players who may not execute script macros.
 
+## Initiative reroll
+
+An effect that sets `flags.theia-tweaks.initiativeReroll` to a number (Hypervigilance sets 9) rerolls the initiative d20 once when it shows that number or lower; the new roll stays.
+
 ## Scheduled lights
 
 An ambient light with the flag `flags.theia-tweaks.schedule` = `{ on: 19, off: 23 }` is lit only between those hours of the world clock (as SmallTime shows it) and hidden the rest of the day. The active GM updates the lights of the viewed and the active scene whenever the time changes.
