@@ -430,6 +430,23 @@ Hooks.on("updateCombatant", async (combatant, changes) => {
 });
 
 /*
+ * Summon macros: an item with the flag "flags.theia-tweaks.onSummonMacro" (a world macro name) runs that macro right
+ * after one of its activities summons creatures, on the client that summoned them. The macro receives
+ * { theiaPass: "onSummon", actor, item, activity, profile, tokens, options } as args[0].
+ */
+Hooks.on("dnd5e.postSummon", async (activity, profile, tokens, options) => {
+  const item = activity?.item;
+  const name = item?.getFlag(MODULE_ID, "onSummonMacro");
+  const macro = name ? game.macros.getName(name) : null;
+  if (!macro) return;
+  try {
+    await runWorldMacro(macro, [{ theiaPass: "onSummon", actor: item.actor, item, activity, profile, tokens, options }]);
+  } catch (error) {
+    console.error(`${MODULE_ID} | ${macro.name}`, error);
+  }
+});
+
+/*
  * Initiative reroll (Hypervigilance): an effect that sets "flags.theia-tweaks.initiativeReroll" to a number makes the
  * initiative d20 reroll once when it shows that number or lower; the new roll stays.
  */

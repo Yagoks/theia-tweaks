@@ -83,6 +83,10 @@ An item with the flag `flags.theia-tweaks.onInitiativeMacro` (the name of a worl
 
 Damage and initiative macros written by a GM also run for players who may not execute script macros.
 
+## Summon macros
+
+An item with the flag `flags.theia-tweaks.onSummonMacro` (the name of a world macro) runs that macro right after one of its activities summons creatures, on the client that summoned them. The macro gets `{ theiaPass: "onSummon", actor, item, activity, profile, tokens, options }` as `args[0]`. Used by `Theia_Greater_Familiar` (the Familiarist's Greater Familiar: Growing Form and Arcane Amalgamation).
+
 ## Initiative reroll
 
 An effect that sets `flags.theia-tweaks.initiativeReroll` to a number (Hypervigilance sets 9) rerolls the initiative d20 once when it shows that number or lower; the new roll stays.
