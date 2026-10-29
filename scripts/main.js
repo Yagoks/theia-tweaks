@@ -447,6 +447,37 @@ Hooks.on("dnd5e.postSummon", async (activity, profile, tokens, options) => {
 });
 
 /*
+ * Dismiss at 0 HP: when a token whose actor has the flag "flags.theia-tweaks.dismissAtZero" drops to 0 Hit Points,
+ * the active GM is asked whether to remove it (as Chris's Premades does for its summons).
+ */
+const dismissAsked = new Set();
+
+async function askDismiss(tokenDoc) {
+  if (!game.users.activeGM?.isSelf || !tokenDoc?.actor?.getFlag(MODULE_ID, "dismissAtZero")) return;
+  if ((tokenDoc.actor.system.attributes?.hp?.value ?? 1) > 0 || dismissAsked.has(tokenDoc.uuid)) return;
+  dismissAsked.add(tokenDoc.uuid);
+  try {
+    const remove = await foundry.applications.api.DialogV2.confirm({
+      window: { title: "Dismiss Summon" },
+      content: `<p><b>${tokenDoc.name}</b> dropped to 0 Hit Points. Remove its token?</p>`,
+      rejectClose: false
+    });
+    if (remove && tokenDoc.parent?.tokens.has(tokenDoc.id)) await tokenDoc.delete();
+  } finally {
+    dismissAsked.delete(tokenDoc.uuid);
+  }
+}
+
+Hooks.on("updateActor", (actor, changes) => {
+  if (foundry.utils.getProperty(changes, "system.attributes.hp.value") === undefined) return;
+  for (const token of actor.isToken ? [actor.token] : actor.getActiveTokens(false, true)) askDismiss(token);
+});
+
+Hooks.on("updateToken", (tokenDoc, changes) => {
+  if (foundry.utils.getProperty(changes, "delta.system.attributes.hp.value") !== undefined) askDismiss(tokenDoc);
+});
+
+/*
  * Initiative reroll (Hypervigilance): an effect that sets "flags.theia-tweaks.initiativeReroll" to a number makes the
  * initiative d20 reroll once when it shows that number or lower; the new roll stays.
  */

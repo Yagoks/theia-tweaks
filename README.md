@@ -87,6 +87,10 @@ Damage and initiative macros written by a GM also run for players who may not ex
 
 An item with the flag `flags.theia-tweaks.onSummonMacro` (the name of a world macro) runs that macro right after one of its activities summons creatures, on the client that summoned them. The macro gets `{ theiaPass: "onSummon", actor, item, activity, profile, tokens, options }` as `args[0]`. Used by `Theia_Greater_Familiar` (the Familiarist's Greater Familiar: Growing Form and Arcane Amalgamation).
 
+## Dismiss summons at 0 HP
+
+When a token whose actor has the flag `flags.theia-tweaks.dismissAtZero` drops to 0 Hit Points, the active GM is asked whether to remove it, as Chris's Premades does for its summons. Used by the Familiarist's Greater Familiar.
+
 ## Initiative reroll
 
 An effect that sets `flags.theia-tweaks.initiativeReroll` to a number (Hypervigilance sets 9) rerolls the initiative d20 once when it shows that number or lower; the new roll stays.
