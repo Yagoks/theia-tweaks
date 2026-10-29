@@ -87,6 +87,10 @@ Damage and initiative macros written by a GM also run for players who may not ex
 
 An item with the flag `flags.theia-tweaks.onSummonMacro` (the name of a world macro) runs that macro right after one of its activities summons creatures, on the client that summoned them. The macro gets `{ theiaPass: "onSummon", actor, item, activity, profile, tokens, options }` as `args[0]`. Used by `Theia_Greater_Familiar` (the Familiarist's Greater Familiar: Growing Form and Arcane Amalgamation).
 
+## Move-away macros
+
+An item with the flag `flags.theia-tweaks.onMoveAwayMacro` (the name of a world macro) runs that macro, on the active GM's client, when another token ends a move farther from its owner's token than it started, while a combat is running and within the item's range. The macro gets `{ theiaPass: "onMoveAway", actor, item, token, mover, before, after }` as `args[0]` (`before` and `after` are the distances). Used by `Theia_Vyke`: when a creature marked by his Brand moves away, the GM is asked whether Vyke uses the reaction "Not Again.".
+
 ## Dismiss summons at 0 HP
 
 When a token whose actor has the flag `flags.theia-tweaks.dismissAtZero` drops to 0 Hit Points, the active GM is asked whether to remove it, as Chris's Premades does for its summons. Used by the Familiarist's Greater Familiar.

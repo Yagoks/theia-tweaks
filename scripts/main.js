@@ -447,6 +447,45 @@ Hooks.on("dnd5e.postSummon", async (activity, profile, tokens, options) => {
 });
 
 /*
+ * Move-away macros: an item with the flag "flags.theia-tweaks.onMoveAwayMacro" (a world macro name) runs that macro, on
+ * the active GM's client, when another token in the running combat ends a move farther from its owner's token than it
+ * started, within the item's range. The macro receives
+ * { theiaPass: "onMoveAway", actor, item, token, mover, before, after } as args[0] (before/after in grid units).
+ */
+function moveDistance(a, b) {
+  return canvas.grid.measurePath([a, b]).distance;
+}
+
+Hooks.on("moveToken", async (moverDoc, movement) => {
+  if (!game.users.activeGM?.isSelf || !game.combat?.started || moverDoc.parent !== canvas.scene) return;
+  const center = (doc, point) => ({
+    x: point.x + doc.width * canvas.grid.sizeX / 2,
+    y: point.y + doc.height * canvas.grid.sizeY / 2
+  });
+  const from = center(moverDoc, movement.origin);
+  const to = center(moverDoc, movement.destination);
+  for (const tokenDoc of canvas.scene.tokens) {
+    if (tokenDoc === moverDoc || !tokenDoc.actor) continue;
+    for (const item of tokenDoc.actor.items) {
+      const name = item.getFlag(MODULE_ID, "onMoveAwayMacro");
+      const macro = name ? game.macros.getName(name) : null;
+      if (!macro) continue;
+      const here = center(tokenDoc, tokenDoc);
+      const before = moveDistance(here, from);
+      const after = moveDistance(here, to);
+      const range = Number(item.system.activities?.find(a => a.range?.value)?.range.value ?? item.system.range?.value);
+      if (after <= before || (Number.isFinite(range) && before > range)) continue;
+      try {
+        await runWorldMacro(macro, [{ theiaPass: "onMoveAway", actor: tokenDoc.actor, item, token: tokenDoc, mover: moverDoc,
+          before, after }]);
+      } catch (error) {
+        console.error(`${MODULE_ID} | ${macro.name}`, error);
+      }
+    }
+  }
+});
+
+/*
  * Dismiss at 0 HP: when a token whose actor has the flag "flags.theia-tweaks.dismissAtZero" drops to 0 Hit Points,
  * the active GM is asked whether to remove it (as Chris's Premades does for its summons).
  */
