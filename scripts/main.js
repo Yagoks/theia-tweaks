@@ -3,6 +3,10 @@
 const MODULE_ID = "theia-tweaks";
 
 Hooks.once("init", () => {
+  // dnd5e 6 warns on every roll-data read of the old bonuses.<type>.attack keys, and Plutonium reads them all
+  // the time, flooding the console. Silence only that warning.
+  CONFIG.compatibility?.excludePatterns?.push(/bonuses\.\w+\.attack has moved/);
+
   game.settings.register(MODULE_ID, "hideBeamUseCard", {
     name: "Hide the \"use\" card of multi-beam spells",
     hint: "Chris's Premades casts Eldritch Blast, Scorching Ray and similar spells with a \"use\" card and then one attack card per beam. Hide the \"use\" card so the chat shows only the beams. The card still exists (Chris's Premades needs it); it is just not shown.",
@@ -63,18 +67,153 @@ Hooks.once("init", () => {
   });
 });
 
+/* -------------------------------------------- */
+/*  Chris's Premades 1 helpers on CPR 2         */
+/* -------------------------------------------- */
+
+/**
+ * The Theia macros call Chris's Premades 1 helpers (chrisPremades.utils…). Chris's Premades 2 moved them into Coven's
+ * Automation Toolkit (globalThis.cat), several under other names. Where only CPR 2 is installed, rebuild the old names
+ * on top of the toolkit, so the same macros run on both. Nothing happens where CPR 1 is installed.
+ */
+function buildCprShim() {
+  const cat = globalThis.cat?.utils;
+  if (!cat) return undefined;
+  const { documentUtils, effectUtils, actorUtils, tokenUtils, queryUtils } = cat;
+  const tokenDoc = t => t?.document ?? t;
+  return {
+    utils: {
+      ...cat,
+      genericUtils: {
+        ...cat.genericUtils,
+        update: documentUtils.update,
+        remove: document => documentUtils.deleteDocument(document),
+        setFlag: documentUtils.setFlag,
+        createEmbeddedDocuments: documentUtils.createEmbeddedDocuments,
+        updateEmbeddedDocuments: documentUtils.updateEmbeddedDocuments,
+        deleteEmbeddedDocuments: documentUtils.deleteEmbeddedDocuments
+      },
+      effectUtils: {
+        ...effectUtils,
+        getEffectByIdentifier: documentUtils.getEffectByIdentifier,
+        applyConditions: actorUtils.applyConditions,
+        // CPR 1 created one effect and kept the identifier in its own flags; the toolkit reads flags.cat.identifier.
+        createEffect: async (document, effectData, { identifier, ...options } = {}) => {
+          const data = foundry.utils.deepClone(effectData);
+          if (identifier) foundry.utils.setProperty(data, "flags.cat.identifier", identifier);
+          return (await effectUtils.createEffects(document, [data], options))?.[0];
+        }
+      },
+      tokenUtils: {
+        ...tokenUtils,
+        grappleHelper: (source, target, item, { noContest = false, flatDC } = {}) => tokenUtils.grapple(tokenDoc(source), tokenDoc(target),
+          { activity: item?.system?.activities?.contents?.[0], flatDC, contest: !noContest }),
+        isGrappledBy: (target, source) => tokenUtils.getGrappled(tokenDoc(source)).some(t => t.id === tokenDoc(target)?.id)
+      },
+      socketUtils: { ...queryUtils }
+    },
+    Teleport: {
+      target: async (tokens, _origin, { range, animation } = {}) => {
+        for (const token of tokens) await tokenUtils.teleportToken(tokenDoc(token), { range, animation: animation === "none" ? undefined : animation });
+      }
+    }
+  };
+}
+
+// The toolkit sets globalThis.cat late in its own ready, so build the old names the first time a macro reads them.
+Hooks.once("init", () => {
+  const cpr = game.modules.get("chris-premades");
+  if (!cpr?.active || foundry.utils.isNewerVersion("2.0.0", cpr.version) || "chrisPremades" in globalThis) return;
+  let shim;
+  Object.defineProperty(globalThis, "chrisPremades", {
+    configurable: true,
+    get() { return (shim ??= buildCprShim()); },
+    set(value) { Object.defineProperty(globalThis, "chrisPremades", { value, writable: true, configurable: true }); }
+  });
+});
+
+/* -------------------------------------------- */
+/*  Spell areas as regions (Foundry 14)         */
+/* -------------------------------------------- */
+
+/**
+ * Foundry 14 and dnd5e 6 place spell areas as regions flagged core.MeasuredTemplate instead of measured templates.
+ * The Theia macros read template fields (t, x, y, distance and width in feet, direction in degrees) and some wait for
+ * the createMeasuredTemplate hook. Give those regions the same read-only fields, and fire that hook when one is created.
+ */
+function templateFields(region) {
+  const shape = region.shapes?.[0];
+  const scene = region.parent;
+  if (!shape || !scene) return null;
+  const px = scene.grid.size / scene.grid.distance;
+  switch (shape.type) {
+    case "circle":
+    case "ring":
+      return { t: "circle", x: shape.x, y: shape.y, distance: shape.radius / px, direction: 0, width: 0 };
+    case "cone":
+      return { t: "cone", x: shape.x, y: shape.y, distance: shape.radius / px, direction: shape.rotation, angle: shape.angle, width: 0 };
+    case "line":
+      return { t: "ray", x: shape.x, y: shape.y, distance: shape.length / px, direction: shape.rotation, width: shape.width / px };
+    case "rectangle":
+      // A template square ran from its corner along the diagonal.
+      return { t: "rect", x: shape.x, y: shape.y, distance: Math.hypot(shape.width, shape.height) / px,
+        direction: shape.rotation + Math.toDegrees(Math.atan2(shape.height, shape.width)), width: 0 };
+    case "emanation": {
+      const base = shape.base ?? {};
+      return { t: "circle", x: base.x + (base.width ?? 1) * scene.grid.size / 2, y: base.y + (base.height ?? 1) * scene.grid.size / 2,
+        distance: shape.radius / px, direction: 0, width: 0 };
+    }
+  }
+  return null;
+}
+
+let regionTemplates = false;
+
+Hooks.once("init", () => {
+  const Region = CONFIG.Region?.documentClass;
+  // Foundry 13 still has measured templates, and its regions are never flagged as one.
+  if (!Region || game.release.generation < 14) return;
+  for (const key of ["t", "x", "y", "distance", "direction", "width", "angle"]) {
+    if (key in Region.prototype) continue;
+    Object.defineProperty(Region.prototype, key, {
+      configurable: true,
+      get() { return this.flags?.core?.MeasuredTemplate ? templateFields(this)?.[key] : undefined; }
+    });
+  }
+  regionTemplates = true;
+});
+
+Hooks.on("createRegion", (region, options, userId) => {
+  if (regionTemplates && region.flags?.core?.MeasuredTemplate) Hooks.callAll("createMeasuredTemplate", region, options, userId);
+});
+
+/* -------------------------------------------- */
+/*  Multi-beam spells                           */
+/* -------------------------------------------- */
+
+const normalizeId = id => String(id ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
 /**
  * The usage card of a listed Chris's Premades multi-beam spell (Eldritch Blast, Scorching Ray…): the casting
- * ("use") activity, which has no roll; the beams are separate activities listed in flags.chris-premades.spellActivities.
+ * ("use") activity, which has no roll. CPR 1 listed the beam activities in flags.chris-premades.spellActivities;
+ * CPR 2 rolls them from the multiSingleTarget macro configured on the item (flags.cat).
  */
 function isBeamUseCard(message) {
-  const ref = message.flags?.dnd5e?.activity;
+  // dnd5e 6 keeps the activity and item on message.system; 5.x kept them in flags.dnd5e.
+  const ref = message.system?.activity ?? message.flags?.dnd5e?.activity;
   if (!ref?.uuid && !ref?.id) return false;
   const activity = ref.uuid ? fromUuidSync(ref.uuid, { strict: false }) : null;
-  const item = activity?.item ?? (message.flags?.dnd5e?.item?.uuid ? fromUuidSync(message.flags.dnd5e.item.uuid, { strict: false }) : null);
+  const itemUuid = message.system?.item?.uuid ?? message.flags?.dnd5e?.item?.uuid;
+  const item = activity?.item ?? (itemUuid ? fromUuidSync(itemUuid, { strict: false }) : null);
+  const listed = String(game.settings.get(MODULE_ID, "beamSpells")).split(",").map(normalizeId).filter(Boolean);
+  const automation = globalThis.cat?.utils?.automationUtils;
+  if (item?.flags?.cat && automation) {
+    if (!listed.includes(normalizeId(item.system.identifier))) return false;
+    const useId = automation.getGenericConfigValue(item, "chris-premades", "multiSingleTarget", "activityId");
+    return !!useId && (activity?.id ?? ref.id) === useId && !(message.rolls?.length);
+  }
   const cpr = item?.flags?.["chris-premades"];
-  const listed = String(game.settings.get(MODULE_ID, "beamSpells")).split(",").map(x => x.trim()).filter(Boolean);
-  if (!listed.includes(cpr?.info?.identifier)) return false;
+  if (!listed.includes(normalizeId(cpr?.info?.identifier))) return false;
   if (activity && activity.type !== "utility") return false;
   const beams = cpr?.spellActivities;
   if (!Array.isArray(beams) || !beams.length) return false;
@@ -132,7 +271,7 @@ function anchorData(document) {
   if (document.flags?.["midi-qol"]?.anchorToToken) return null;
   const origin = document.flags?.dnd5e?.origin ?? document.flags?.["midi-qol"]?.originUuid;
   const item = origin ? fromUuidSync(origin, { strict: false }) : null;
-  if (!item?.flags?.["chris-premades"] || !item.actor) return null;
+  if (!(item?.flags?.["chris-premades"] || item?.flags?.cat) || !item.actor) return null;
   const self = (item.system.range?.units === "self") || item.system.activities?.some(a => a.range?.units === "self");
   if (!self) return null;
   const tokens = item.actor.getActiveTokens(true).filter(t => t.document.parent === canvas.scene);

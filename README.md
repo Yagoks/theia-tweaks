@@ -13,7 +13,8 @@ Premades needs it; it is just not shown.
 Settings:
 - **Hide the "use" card of multi-beam spells:** on by default.
 - **Multi-beam spells:** the Chris's Premades identifiers of the spells to treat this way. Default:
-  `eldritchBlast, scorchingRay`.
+  `eldritchBlast, scorchingRay`. Case and dashes are ignored, so the Chris's Premades 2 identifiers (`eldritch-blast`) match
+  too.
 
 Other Chris's Premades spells (Hex, Spirit Guardians…) keep their main card.
 
@@ -110,6 +111,14 @@ An NPC can hold the flag `flags.theia-tweaks.giftScenes` = `{ "<item name, lower
 ## Hit points on level up
 
 Theia's rule: take the average, or roll; one reroll is allowed and the second result stays. In the level-up window, after the first roll the average can no longer be taken, and after the second roll the roll button is locked. Players can't type a hit point value by hand; the GM still can.
+
+## Chris's Premades 1 macros on Chris's Premades 2
+
+The Theia macros call Chris's Premades 1 helpers (`chrisPremades.utils.genericUtils.update`, `effectUtils.createEffect`, `socketUtils.firstOwner`, `Teleport.target` and others). Chris's Premades 2 moved them into Coven's Automation Toolkit (`globalThis.cat`), several under other names. When only Chris's Premades 2 is installed, `chrisPremades` is rebuilt on top of the toolkit the first time a macro reads it, so the same macros run on both versions. With Chris's Premades 1 nothing changes.
+
+## Spell areas as regions (Foundry 14)
+
+Foundry 14 and dnd5e 6 place spell areas as regions instead of measured templates. Those regions get the old template fields, read-only (`t`, `x`, `y`, `distance`, `direction`, `width`, `angle`, in feet and degrees), and their creation also fires `createMeasuredTemplate`, so macros written for templates (Cold Snap, Winds of Healing, Star Dust, Water Cannon…) keep working. On Foundry 13 nothing changes.
 
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`
