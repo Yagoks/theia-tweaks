@@ -92,6 +92,10 @@ An item with the flag `flags.theia-tweaks.onSummonMacro` (the name of a world ma
 
 An item with the flag `flags.theia-tweaks.onMoveAwayMacro` (the name of a world macro) runs that macro, on the active GM's client, when another token ends a move farther from its owner's token than it started, while a combat is running and within the item's range. The macro gets `{ theiaPass: "onMoveAway", actor, item, token, mover, before, after }` as `args[0]` (`before` and `after` are the distances). Used by `Theia_Vyke`: when a creature marked by his Brand moves away, the GM is asked whether Vyke uses the reaction "Not Again.".
 
+## Nearby-hit macros
+
+An item with the flag `flags.theia-tweaks.onNearbyHitMacro` (the name of a world macro) runs that macro after Midi-QOL checks the hits of an attack roll, once for each creature hit within the item's range of its owner's token (the owner included; 30 feet when the item has no range), on the client running the attack. The macro gets `{ theiaPass: "onNearbyHit", actor, item, token, target, attacker, workflow }` as `args[0]` and may change `workflow.targets` / `workflow.hitTargets` before the damage. Used by Sven's Cloud Rune (`Theia_Rune_Knight`): the reaction sends the attack to another creature, with the same roll against its AC.
+
 ## Dismiss summons at 0 HP
 
 When a token whose actor has the flag `flags.theia-tweaks.dismissAtZero` drops to 0 Hit Points, the active GM is asked whether to remove it, as Chris's Premades does for its summons. Used by the Familiarist's Greater Familiar.

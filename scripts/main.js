@@ -625,6 +625,41 @@ Hooks.on("moveToken", async (moverDoc, movement) => {
 });
 
 /*
+ * Nearby-hit macros: an item with the flag "flags.theia-tweaks.onNearbyHitMacro" (a world macro name) runs that macro
+ * after Midi-QOL checks the hits of an attack roll, once for each creature hit within the item's range of its owner's
+ * token (the owner included), on the client running the attack. The macro receives
+ * { theiaPass: "onNearbyHit", actor, item, token, target, attacker, workflow } as args[0] and may change
+ * workflow.targets / workflow.hitTargets before the damage (Cloud Rune).
+ */
+Hooks.on("midi-qol.hitsChecked", async workflow => {
+  const scene = workflow.token?.document?.parent ?? canvas.scene;
+  if (!scene || scene !== canvas.scene || !workflow.hitTargets?.size) return;
+  for (const tokenDoc of scene.tokens) {
+    const actor = tokenDoc.actor;
+    if (!actor || actor === workflow.actor) continue;
+    for (const item of actor.items) {
+      const name = item.getFlag(MODULE_ID, "onNearbyHitMacro");
+      const macro = name ? game.macros.getName(name) : null;
+      if (!macro) continue;
+      const range = Number(item.system.activities?.find(a => a.range?.value)?.range.value ?? item.system.range?.value) || 30;
+      for (const hit of [...workflow.hitTargets]) {
+        const target = hit.document ?? hit;
+        if (!workflow.hitTargets.has(hit) || target.parent !== scene) continue;
+        const distance = globalThis.MidiQOL?.computeDistance?.(tokenDoc.object, target.object, { wallsBlock: false })
+          ?? moveDistance(tokenDoc.object.center, target.object.center);
+        if (target !== tokenDoc && distance > range) continue;
+        try {
+          await runWorldMacro(macro, [{ theiaPass: "onNearbyHit", actor, item, token: tokenDoc, target,
+            attacker: workflow.token?.document, workflow }]);
+        } catch (error) {
+          console.error(`${MODULE_ID} | ${macro.name}`, error);
+        }
+      }
+    }
+  }
+});
+
+/*
  * Dismiss at 0 HP: when a token whose actor has the flag "flags.theia-tweaks.dismissAtZero" drops to 0 Hit Points,
  * the active GM is asked whether to remove it (as Chris's Premades does for its summons).
  */
