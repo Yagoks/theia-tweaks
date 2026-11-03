@@ -124,5 +124,9 @@ The Theia macros call Chris's Premades 1 helpers (`chrisPremades.utils.genericUt
 
 Foundry 14 and dnd5e 6 place spell areas as regions instead of measured templates. Those regions get the old template fields, read-only (`t`, `x`, `y`, `distance`, `direction`, `width`, `angle`, in feet and degrees), and their creation also fires `createMeasuredTemplate`, so macros written for templates (Cold Snap, Winds of Healing, Star Dust, Water Cannon…) keep working. On Foundry 13 nothing changes.
 
+A spell area is recognized by either flag: core's `core.MeasuredTemplate`, or `dnd5e.dimensions`, which is the only one dnd5e 6.0.6 keeps on the region it creates.
+
+While an area is being placed, Ctrl + mouse wheel turns it 5° at a time and Shift + mouse wheel 15°. Mass Edit replaces the region layer's mouse wheel handler (to turn the hovered region), which also blocked turning an area being placed; during a placement this module uses Foundry's own handler again. Needs libWrapper.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`

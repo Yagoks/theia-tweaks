@@ -137,10 +137,14 @@ Hooks.once("init", () => {
 /* -------------------------------------------- */
 
 /**
- * Foundry 14 and dnd5e 6 place spell areas as regions flagged core.MeasuredTemplate instead of measured templates.
+ * Foundry 14 and dnd5e 6 place spell areas as regions instead of measured templates.
  * The Theia macros read template fields (t, x, y, distance and width in feet, direction in degrees) and some wait for
  * the createMeasuredTemplate hook. Give those regions the same read-only fields, and fire that hook when one is created.
  */
+// Core flags a placed area as core.MeasuredTemplate; dnd5e 6.0.6 only flags the preview, and the region it creates
+// carries flags.dnd5e.dimensions instead.
+const isTemplateRegion = region => !!(region.flags?.core?.MeasuredTemplate || region.flags?.dnd5e?.dimensions);
+
 function templateFields(region) {
   const shape = region.shapes?.[0];
   const scene = region.parent;
@@ -177,14 +181,25 @@ Hooks.once("init", () => {
     if (key in Region.prototype) continue;
     Object.defineProperty(Region.prototype, key, {
       configurable: true,
-      get() { return this.flags?.core?.MeasuredTemplate ? templateFields(this)?.[key] : undefined; }
+      get() { return isTemplateRegion(this) ? templateFields(this)?.[key] : undefined; }
     });
   }
   regionTemplates = true;
 });
 
 Hooks.on("createRegion", (region, options, userId) => {
-  if (regionTemplates && region.flags?.core?.MeasuredTemplate) Hooks.callAll("createMeasuredTemplate", region, options, userId);
+  if (regionTemplates && isTemplateRegion(region)) Hooks.callAll("createMeasuredTemplate", region, options, userId);
+});
+
+// Mass Edit overrides RegionLayer#_onMouseWheel to rotate the hovered region, which also swallows Ctrl/Shift + wheel
+// while a spell area is being placed, so the area can't be turned. Keep Foundry's own handler during a placement.
+// Foundry's handler is taken here, at load, before any libWrapper override replaces it.
+const coreRegionWheel = foundry.canvas?.layers?.RegionLayer?.prototype._onMouseWheel;
+Hooks.once("setup", () => {
+  if (!coreRegionWheel || game.release.generation < 14 || !globalThis.libWrapper) return;
+  libWrapper.register(MODULE_ID, "foundry.canvas.layers.RegionLayer.prototype._onMouseWheel", function (wrapped, event) {
+    return this._placementContext ? coreRegionWheel.call(this, event) : wrapped(event);
+  }, "MIXED");
 });
 
 /* -------------------------------------------- */
