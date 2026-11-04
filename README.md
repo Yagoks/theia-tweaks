@@ -128,5 +128,11 @@ A spell area is recognized by either flag: core's `core.MeasuredTemplate`, or `d
 
 While an area is being placed, Ctrl + mouse wheel turns it 5° at a time and Shift + mouse wheel 15°. Mass Edit replaces the region layer's mouse wheel handler (to turn the hovered region), which also blocked turning an area being placed; during a placement this module uses Foundry's own handler again. Needs libWrapper.
 
+Mass Edit also replaces region dragging, so dragging a placed area's shape handles (a cone's length or angle, a line's width) moved the whole area, and only the GM could drag. Dragging a handle edits the shape again, as in Foundry, and the area's owner can drag it.
+
+## Dragging grappled creatures (Foundry 14)
+
+Coven's Automation Toolkit (Chris's Premades 2) ends a grapple when the grappled creature is teleported or forced out of reach, but a grappler walking away left it behind. When a grappler moves without teleporting, the creatures it grapples move with it by the same offset, keeping their place beside it on the grid. The active GM moves them, so it also works when a player moves the grappler. Speed isn't halved.
+
 ## Install
 Manifest URL: `https://github.com/Yagoks/theia-tweaks/releases/latest/download/module.json`

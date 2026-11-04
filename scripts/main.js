@@ -195,11 +195,49 @@ Hooks.on("createRegion", (region, options, userId) => {
 // while a spell area is being placed, so the area can't be turned. Keep Foundry's own handler during a placement.
 // Foundry's handler is taken here, at load, before any libWrapper override replaces it.
 const coreRegionWheel = foundry.canvas?.layers?.RegionLayer?.prototype._onMouseWheel;
+// Mass Edit also overrides Region#_onDragLeftMove and Region#_canDrag: dragging a shape handle (a cone's length or
+// angle, a line's width) moved the whole region instead, and only the GM could drag. Keep Foundry's handle editing,
+// and let the region's owner drag it as Foundry allows.
+const RegionObject = foundry.canvas?.placeables?.Region;
+const coreRegionCanDrag = RegionObject?.prototype._canDrag;
 Hooks.once("setup", () => {
   if (!coreRegionWheel || game.release.generation < 14 || !globalThis.libWrapper) return;
   libWrapper.register(MODULE_ID, "foundry.canvas.layers.RegionLayer.prototype._onMouseWheel", function (wrapped, event) {
     return this._placementContext ? coreRegionWheel.call(this, event) : wrapped(event);
   }, "MIXED");
+  libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Region.prototype._onDragLeftMove", function (wrapped, event) {
+    const handle = event.interactionData?.handle;
+    return handle ? handle.controls._onDragMove(event) : wrapped(event);
+  }, "MIXED");
+  if (coreRegionCanDrag) libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Region.prototype._canDrag", function (wrapped, user, event) {
+    return coreRegionCanDrag.call(this, user, event) || wrapped(user, event);
+  }, "MIXED");
+  // These wrappers sit on purpose around Mass Edit's overrides: don't warn about the conflict.
+  libWrapper.ignore_conflicts(MODULE_ID, "multi-token-edit", [
+    "foundry.canvas.layers.RegionLayer.prototype._onMouseWheel",
+    "foundry.canvas.placeables.Region.prototype._onDragLeftMove",
+    "foundry.canvas.placeables.Region.prototype._canDrag"
+  ]);
+});
+
+/* -------------------------------------------- */
+/*  Dragging grappled creatures                 */
+/* -------------------------------------------- */
+
+/**
+ * Coven's Automation Toolkit (Chris's Premades 2) ends a grapple when the grappled creature is teleported or forced out
+ * of reach, but a grappler walking away left it behind. When a grappler moves without teleporting, the creatures it
+ * grapples move with it by the same offset, so they keep their place beside it on the grid. The active GM moves them.
+ */
+Hooks.on("moveToken", (document, movement) => {
+  if (game.release.generation < 14 || !game.users.activeGM?.isSelf) return;
+  const dx = movement.destination.x - movement.origin.x;
+  const dy = movement.destination.y - movement.origin.y;
+  if (!dx && !dy) return;
+  if (CONFIG.Token.movement.actions[movement.destination.action]?.teleport) return;
+  const grappled = document.parent.tokens.filter(t => t.id !== document.id && t.actor?.effects.some(e =>
+    e.flags?.cat?.identifier === "grappleTarget" && e.flags.cat.grapple?.tokenId === document.id));
+  for (const token of grappled) token.update({ x: token.x + dx, y: token.y + dy });
 });
 
 /* -------------------------------------------- */
